@@ -1,7 +1,7 @@
 import python_parser.python_parser as lib
 
 
-# Test basic tag matching
+# Test basic tag matching to check basic parsing works
 def test_match_tag():
     p = lib.tag("foo")
     assert(p("foo") == "foo")
@@ -36,6 +36,28 @@ def test_derived_partial():
 def test_map():
     p = lib.tag("foo").map(len)
     assert(p("foo") == 3)
+
+
+# Test basic parsers
+def test_anychar():
+    p = lib.anychar()
+    assert(p.run_parser("foo") == ("f", "oo"))
+
+
+def test_anychar_fail():
+    p = lib.anychar()
+    assert(p.run_parser("") == None)
+
+
+def test_peek():
+    p = lib.peek(lib.tag("fo"))
+    assert(p.run_parser("foo") == ("fo", "foo"))
+
+
+def test_peek_fail():
+    p = lib.peek(lib.tag("fo"))
+    assert(p.run_parser("fro") == None)
+    assert(p.run_parser("") == None)
 
 
 # Test sequencing combinator
@@ -73,7 +95,6 @@ def test_function_decorator():
     assert(plen("boo") == None)
 
     
-
 def test_class_decorator():
 
     @lib.DeriveParser(lib.tag("foo"), lib.tag("bar"))
@@ -92,3 +113,18 @@ def test_class_decorator():
     # Failure case
     assert(p("foobaz") == None)
     assert(p("foobarr") == None)
+
+
+# Test other combinators
+def test_left():
+    p = lib.tag("foo")
+    q = lib.tag("bar")
+    parser = lib.left(p, q)
+    assert(parser("foobar") == "foo")
+
+
+def test_right():
+    p = lib.tag("foo")
+    q = lib.tag("bar")
+    parser = lib.right(p, q)
+    assert(parser("foobar") == "bar")
