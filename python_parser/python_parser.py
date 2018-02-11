@@ -15,7 +15,7 @@ class Parser(object):
         to consume all the input.
         """
         res = self.run_parser(string)
-        if res != None:
+        if res is not None:
             m, r = res
             if r != "":
                 return None
@@ -32,7 +32,7 @@ class Parser(object):
         class Partial(self.__class__):
             def __call__(self, string):
                 res = self.run_parser(string)
-                if res != None:
+                if res is not None:
                     m, _ = res
                     return m
                 else:
@@ -46,7 +46,7 @@ class Parser(object):
         class MappedParser(self.__class__):
             def run_parser(self, string):
                 res = super().run_parser(string)
-                if res == None:
+                if res is None:
                     return None
                 else:
                     m, r = res
@@ -66,7 +66,6 @@ class Parser(object):
 
     def else_parse(self, p):
         return self.bimap(lambda s: p.run_parser(s), lambda x: x)
-
 
 
 # Basic parsers
@@ -105,7 +104,7 @@ def peek(p):
     class PeekP(Parser):
         def run_parser(self, string):
             res = p.run_parser(string)
-            if res == None:
+            if res is None:
                 return None
             else:
                 x, _ = res

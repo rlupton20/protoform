@@ -7,7 +7,8 @@ setup(
     description="A combinatorial parsing library",
     license="BSD",
     keywords="parsing",
+    packages=["python_parser"],
     python_requires=">=3",
-    packages=["python_parser"]
+    setup_requires=['pytest-runner'],
+    tests_require=['pytest']
 )
-
