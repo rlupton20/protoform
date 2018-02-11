@@ -1,4 +1,4 @@
-import python_parser.python_parser as lib
+import protoform.protoform as lib
 
 
 # Test basic tag matching to check basic parsing works
