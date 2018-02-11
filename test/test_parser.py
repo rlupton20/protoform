@@ -38,6 +38,25 @@ def test_map():
     assert(p("foo") == 3)
 
 
+def test_else_parse_else_branch():
+    q = lib.tag("foo")
+    p = lib.tag("bar").else_parse(q)
+    assert(p("foo") == "foo")
+
+
+def test_else_parse_success_branch():
+    q = lib.tag("bar")
+    p = lib.tag("foo").else_parse(q)
+    assert(p("foo") == "foo")
+
+
+def test_else_parse_can_still_fail():
+    q = lib.tag("bar")
+    p = lib.tag("foo").else_parse(q)
+    assert(p("baz") == None)
+
+
+
 # Test basic parsers
 def test_anychar():
     p = lib.anychar()
@@ -94,7 +113,7 @@ def test_function_decorator():
     assert(plen("foo") == 3)
     assert(plen("boo") == None)
 
-    
+
 def test_class_decorator():
 
     @lib.DeriveParser(lib.tag("foo"), lib.tag("bar"))
@@ -128,3 +147,18 @@ def test_right():
     q = lib.tag("bar")
     parser = lib.right(p, q)
     assert(parser("foobar") == "bar")
+
+
+def test_unless_no_stop():
+    p = lib.unless(lib.char("b"), lib.anychar())
+    assert(p.run_parser("foobar") == ("f", "oobar"))
+
+
+def test_unless_stop_case():
+    p = lib.unless(lib.char("f"), lib.anychar())
+    assert(p.run_parser("foobar") == None)
+
+
+def test_take_until():
+    p = lib.take_until(lib.char("b"), lib.anychar())
+    assert(p.run_parser("foobar") == (['f', 'o', 'o'], "bar"))

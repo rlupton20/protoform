@@ -40,6 +40,9 @@ class Parser(object):
         return Partial()
 
     def map(self, f):
+        """
+        On success apply the function f to the parsed value
+        """
         class MappedParser(self.__class__):
             def run_parser(self, string):
                 res = super().run_parser(string)
@@ -50,7 +53,22 @@ class Parser(object):
                     return (f(m), r)
         return MappedParser()
 
-    
+    def bimap(self, l, r):
+        """
+        On failure run l(input_string), on success run r on the output
+        of run_parser
+        """
+        class BiMapped(self.__class__):
+            def run_parser(self, string):
+                res = super().run_parser(string)
+                return r(res) if res else l(string)
+        return BiMapped()
+
+    def else_parse(self, p):
+        return self.bimap(lambda s: p.run_parser(s), lambda x: x)
+
+
+
 # Basic parsers
 def tag(tag):
     """
@@ -96,6 +114,9 @@ def peek(p):
 
 
 def char(c):
+    """
+    Matches a single character
+    """
     assert(len(c) == 1)
     return tag(c)
 
@@ -157,3 +178,23 @@ def right(p, q):
     def r(_, y):
         return y
     return r
+
+
+def unless(p, q):
+    return peek(p).bimap(lambda s: q.run_parser(s), lambda _: None)
+
+
+def take_until(e, p):
+
+    class TakeUntil(Parser):
+        def run_parser(self, string):
+            step = unless(e, p)
+            acc = []
+            try:
+                while True:
+                    x, string = step.run_parser(string)
+                    acc.append(x)
+            except TypeError:
+                return (acc, string)
+
+    return TakeUntil()
