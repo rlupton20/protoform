@@ -1,3 +1,9 @@
+class ParseError(Exception):
+    def __init__(self, message, remaining=None):
+        self.message = message
+        self.remaining = remaining
+
+
 class Parser(object):
     """
     Base parser object. Provides utilities for deriving new parsers
@@ -6,7 +12,7 @@ class Parser(object):
     def __init__(self):
         pass
 
-    def run_parser(self, string):
+    def _run_parser(self, string):
         pass
 
     def __call__(self, string):
@@ -14,15 +20,13 @@ class Parser(object):
         The function interface for a parser performs a parse, expecting
         to consume all the input.
         """
-        res = self.run_parser(string)
-        if res is not None:
-            m, r = res
-            if r != "":
-                return None
-            else:
-                return m
+        m, r = self._run_parser(string)
+        if r == "":
+            return m
         else:
-            return None
+            raise ParseError("Failed to consume all input. Remaining: {}..."
+                                 .format(r[0:10]),
+                             remaining=r)
 
     def partial(self):
         """
@@ -31,12 +35,7 @@ class Parser(object):
         """
         class Partial(self.__class__):
             def __call__(self, string):
-                res = self.run_parser(string)
-                if res is not None:
-                    m, _ = res
-                    return m
-                else:
-                    return None
+                return self._run_parser(string)
         return Partial()
 
     def map(self, f):
@@ -44,28 +43,10 @@ class Parser(object):
         On success apply the function f to the parsed value
         """
         class MappedParser(self.__class__):
-            def run_parser(self, string):
-                res = super().run_parser(string)
-                if res is None:
-                    return None
-                else:
-                    m, r = res
-                    return (f(m), r)
+            def _run_parser(self, string):
+                m, r = super()._run_parser(string)
+                return (f(m), r)
         return MappedParser()
-
-    def bimap(self, l, r):
-        """
-        On failure run l(input_string), on success run r on the output
-        of run_parser
-        """
-        class BiMapped(self.__class__):
-            def run_parser(self, string):
-                res = super().run_parser(string)
-                return r(res) if res else l(string)
-        return BiMapped()
-
-    def else_parse(self, p):
-        return self.bimap(lambda s: p.run_parser(s), lambda x: x)
 
 
 # Basic parsers
@@ -74,11 +55,11 @@ def tag(tag):
     Matches the beginning of a string if equal to tag
     """
     class Match(Parser):
-        def run_parser(self, string):
+        def _run_parser(self, string):
             if string.startswith(tag):
                 return (tag, string[len(tag):])
             else:
-                return None
+                raise ParseError("Failed to match {}".format(tag))
     return Match()
 
 
@@ -87,9 +68,9 @@ def anychar():
     Matches any character
     """
     class AnyChar(Parser):
-        def run_parser(self, string):
+        def _run_parser(self, string):
             if string == "":
-                return None
+                raise ParseError("Can't match anychar on empty string")
             else:
                 x, *_ = string
                 return (x, string[1:])
@@ -102,13 +83,9 @@ def peek(p):
     doesn't consume any input if it matches.
     """
     class PeekP(Parser):
-        def run_parser(self, string):
-            res = p.run_parser(string)
-            if res is None:
-                return None
-            else:
-                x, _ = res
-                return (x, string)
+        def _run_parser(self, string):
+            x, _ = p._run_parser(string)
+            return (x, string)
     return PeekP()
 
 
@@ -124,16 +101,13 @@ def char(c):
 # help define more combinators
 def sequence(*args):
     class Sequence(Parser):
-        def run_parser(self, string):
+        def _run_parser(self, string):
             acc = []
-            try:
-                for p in args:
-                    x, s = p.run_parser(string)
-                    acc.append(x)
-                    string = s
-                return (tuple(acc), string)
-            except TypeError:
-                return None
+            for p in args:
+                x, s = p._run_parser(string)
+                acc.append(x)
+                string = s
+            return (tuple(acc), string)
     return Sequence()
 
 
@@ -179,21 +153,17 @@ def right(p, q):
     return _right
 
 
-def unless(p, q):
-    return peek(p).bimap(lambda s: q.run_parser(s), lambda _: None)
-
-
 def take_until(e, p):
 
     class TakeUntil(Parser):
-        def run_parser(self, string):
-            step = unless(e, p)
+        def _run_parser(self, string):
             acc = []
-            try:
-                while True:
-                    x, string = step.run_parser(string)
+            while True:
+                try:
+                    peek(e)._run_parser(string)
+                    return (acc, string)
+                except ParseError:
+                    x, string = p._run_parser(string)
                     acc.append(x)
-            except TypeError:
-                return (acc, string)
 
     return TakeUntil()
