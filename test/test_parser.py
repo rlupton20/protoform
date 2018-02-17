@@ -1,3 +1,4 @@
+import pytest
 import protoform.protoform as lib
 
 
@@ -9,23 +10,25 @@ def test_match_tag():
 
 def test_match_tag_fail():
     p = lib.tag("foo")
-    assert(p("flo") is None)
+    with pytest.raises(lib.ParseError):
+        p("flo")
 
 
 def test_match_init():
     p = lib.tag("foo")
-    assert(p.run_parser("foot") == ("foo", "t"))
+    assert(p._run_parser("foot") == ("foo", "t"))
 
 
 def test_match_init_complete():
     p = lib.tag("foo")
-    assert(p("foot") is None)
+    with pytest.raises(lib.ParseError):
+        p("foot")
 
 
 # Now test parser base class
 def test_derived_partial():
     p = lib.tag("foo").partial()
-    assert(p("foot") == "foo")
+    assert(p("foot") == ("foo", "t"))
 
 
 def test_map():
@@ -33,44 +36,29 @@ def test_map():
     assert(p("foo") == 3)
 
 
-def test_else_parse_else_branch():
-    q = lib.tag("foo")
-    p = lib.tag("bar").else_parse(q)
-    assert(p("foo") == "foo")
-
-
-def test_else_parse_success_branch():
-    q = lib.tag("bar")
-    p = lib.tag("foo").else_parse(q)
-    assert(p("foo") == "foo")
-
-
-def test_else_parse_can_still_fail():
-    q = lib.tag("bar")
-    p = lib.tag("foo").else_parse(q)
-    assert(p("baz") is None)
-
-
 # Test basic parsers
 def test_anychar():
     p = lib.anychar()
-    assert(p.run_parser("foo") == ("f", "oo"))
+    assert(p._run_parser("foo") == ("f", "oo"))
 
 
 def test_anychar_fail():
     p = lib.anychar()
-    assert(p.run_parser("") is None)
+    with pytest.raises(lib.ParseError):
+        p._run_parser("")
 
 
 def test_peek():
     p = lib.peek(lib.tag("fo"))
-    assert(p.run_parser("foo") == ("fo", "foo"))
+    assert(p._run_parser("foo") == ("fo", "foo"))
 
 
 def test_peek_fail():
     p = lib.peek(lib.tag("fo"))
-    assert(p.run_parser("fro") is None)
-    assert(p.run_parser("") is None)
+    with pytest.raises(lib.ParseError):
+        p._run_parser("fro")
+    with pytest.raises(lib.ParseError):
+        p._run_parser("")
 
 
 # Test sequencing combinator
@@ -81,7 +69,8 @@ def test_sequence():
 
 def test_sequence_fail():
     p = lib.sequence(lib.tag("foo"), lib.tag("baz"))
-    assert(p("foobar") is None)
+    with pytest.raises(lib.ParseError):
+        p("foobar")
 
 
 def test_args_via_sequence():
@@ -105,7 +94,8 @@ def test_function_decorator():
         return len(s)
 
     assert(plen("foo") == 3)
-    assert(plen("boo") is None)
+    with pytest.raises(lib.ParseError):
+        plen("boo")
 
 
 def test_class_decorator():
@@ -124,8 +114,10 @@ def test_class_decorator():
     assert(r.x == "foo")
     assert(r.y == "bar")
     # Failure case
-    assert(p("foobaz") is None)
-    assert(p("foobarr") is None)
+    with pytest.raises(lib.ParseError):
+        p("foobaz")
+    with pytest.raises(lib.ParseError):
+        p("foobarr")
 
 
 # Test other combinators
@@ -143,16 +135,6 @@ def test_right():
     assert(parser("foobar") == "bar")
 
 
-def test_unless_no_stop():
-    p = lib.unless(lib.char("b"), lib.anychar())
-    assert(p.run_parser("foobar") == ("f", "oobar"))
-
-
-def test_unless_stop_case():
-    p = lib.unless(lib.char("f"), lib.anychar())
-    assert(p.run_parser("foobar") is None)
-
-
 def test_take_until():
     p = lib.take_until(lib.char("b"), lib.anychar())
-    assert(p.run_parser("foobar") == (['f', 'o', 'o'], "bar"))
+    assert(p._run_parser("foobar") == (['f', 'o', 'o'], "bar"))
