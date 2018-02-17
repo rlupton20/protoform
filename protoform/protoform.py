@@ -167,16 +167,16 @@ class DeriveParser(object):
 # More combinators
 def left(p, q):
     @parser(p, q)
-    def l(x, _):
+    def _left(x, _):
         return x
-    return l
+    return _left
 
 
 def right(p, q):
     @parser(p, q)
-    def r(_, y):
+    def _right(_, y):
         return y
-    return r
+    return _right
 
 
 def unless(p, q):

@@ -1,0 +1,31 @@
+stages:
+  - lint
+  - unit_test
+
+
+# LINTING
+flake8_lint:
+  stage: lint
+  image: python:3.6
+  script:
+    - pip install flake8
+    - flake8 .
+
+# UNIT TESTING
+.unit_test_spec: &unit_test_spec
+  stage: unit_test
+  script:
+    - python setup.py test
+
+unit_test:python34:
+  image: python:3.4
+  <<: *unit_test_spec
+
+unit_test:python35:
+  image: python:3.5
+  <<: *unit_test_spec
+
+unit_test:python36:
+  image: python:3.6
+  <<: *unit_test_spec
+
