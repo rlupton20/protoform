@@ -25,7 +25,7 @@ class Parser(object):
             return m
         else:
             raise ParseError("Failed to consume all input. Remaining: {}..."
-                                 .format(r[0:10]),
+                             .format(r[0:10]),
                              remaining=r)
 
     def partial(self):
