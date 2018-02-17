@@ -48,6 +48,16 @@ class Parser(object):
                 return (f(m), r)
         return MappedParser()
 
+    def bind(self, f):
+        """
+        Monadic bind
+        """
+        class Bound(self.__class__):
+            def _run_parser(self, string):
+                x, s = super()._run_parser(string)
+                return f(x)._run_parser(s)
+        return Bound()
+
 
 # Basic parsers
 def tag(tag):

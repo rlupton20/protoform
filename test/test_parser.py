@@ -36,6 +36,24 @@ def test_map():
     assert(p("foo") == 3)
 
 
+def test_bind():
+    p = lib.anychar().bind(lambda c: lib.tag("foo") if c == 't' else lib.tag("bar"))
+    assert(p("tfoo") == "foo")
+    assert(p("fbar") == "bar")
+
+
+def test_bind_initial_failue():
+    p = lib.char('a').bind(lambda _: lib.tag("foo"))
+    with pytest.raises(lib.ParseError):
+        p("bfoo")
+
+
+def test_bind_continuation_failure():
+    p = lib.anychar().bind(lambda c: lib.tag("foo") if c == 't' else lib.tag("bar"))
+    with pytest.raises(lib.ParseError):
+        p("tbar")
+
+
 # Test basic parsers
 def test_anychar():
     p = lib.anychar()
