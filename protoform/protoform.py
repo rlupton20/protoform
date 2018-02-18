@@ -59,6 +59,17 @@ class Parser(object):
         return Bound()
 
 
+def fail():
+    raise ParseError("This is a parser that always fails")
+
+
+def pure(v):
+    class Pure(Parser):
+        def _run_parser(self, string):
+            return (v, string)
+    return Pure()
+
+
 # Basic parsers
 def tag(tag):
     """
@@ -150,6 +161,9 @@ class DeriveParser(object):
 
 # More combinators
 def left(p, q):
+    """
+    Run p then q, but only return the result of p
+    """
     @parser(p, q)
     def _left(x, _):
         return x
@@ -157,13 +171,31 @@ def left(p, q):
 
 
 def right(p, q):
+    """
+    Run p then q, but only return the result of q
+    """
     @parser(p, q)
     def _right(_, y):
         return y
     return _right
 
 
+def lift(f):
+    """
+    Lift f to operate on parsers
+    """
+    def combiner(*args):
+        @parser(*args)
+        def vcombiner(*vargs):
+            return f(*vargs)
+        return vcombiner
+    return combiner
+
+
 def take_until(e, p):
+    """
+    Parses with p until e matches, or end of input
+    """
 
     class TakeUntil(Parser):
         def _run_parser(self, string):
@@ -175,5 +207,54 @@ def take_until(e, p):
                 except ParseError:
                     x, string = p._run_parser(string)
                     acc.append(x)
+                    if string == "":
+                        return (acc, string)
 
     return TakeUntil()
+
+
+def take_until_as_str(e, p):
+    return take_until(e, p).map(lambda cs: "".join(cs))
+
+
+def many(p):
+    class Many(Parser):
+        def _run_parser(self, string):
+            acc = []
+            try:
+                while True:
+                    x, string = p._run_parser(string)
+                    acc.append(x)
+            except ParseError:
+                return (acc, string)
+    return Many()
+
+
+def many1(p):
+    merge = lift(lambda l, r: [l] + r)
+    return merge(p, many(p))
+
+
+def alternative(*args):
+    class Alternative(Parser):
+        def _run_parser(self, string):
+            for p in args:
+                try:
+                    return p._run_parser(string)
+                except ParseError:
+                    pass
+            raise ParseError("No parsers from alternatives matches")
+    return Alternative()
+
+
+# Output manipulators decorators
+def as_string(f):
+    def _as_string(*args):
+        return f(*args).map(lambda cs: "".join(cs))
+    return _as_string
+
+
+def trim_whitespace(f):
+    def _trim_whitespace(*args):
+        return f(*args).map(lambda s: s.strip())
+    return _trim_whitespace

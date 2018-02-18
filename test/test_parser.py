@@ -153,6 +153,76 @@ def test_right():
     assert(parser("foobar") == "bar")
 
 
+def test_lift():
+    p = lib.tag("foot")
+    q = lib.tag("bar")
+    combiner = lib.lift(lambda x, y: len(x) - len(y))
+    parser = combiner(p, q)
+    assert(parser("footbar") == 1)
+
+
 def test_take_until():
     p = lib.take_until(lib.char("b"), lib.anychar())
     assert(p._run_parser("foobar") == (['f', 'o', 'o'], "bar"))
+
+
+def test_take_until_until_end_of_input():
+    p = lib.take_until(lib.char("b"), lib.anychar()).map(lambda cs: "".join(cs))
+    assert(p("aaa") == "aaa")
+
+
+def test_many():
+    parser = lib.many(lib.char('a')).map(lambda cs: "".join(cs)).partial()
+    assert(parser("aaabbb") == ("aaa", "bbb"))
+
+
+def test_many_until_end_of_string():
+    parser = lib.many(lib.char('a')).map(lambda cs: "".join(cs))
+    assert(parser("aaa") == "aaa")
+
+
+def test_many_on_empty_string():
+    parser = lib.many(lib.char('a'))
+    assert(parser("") == [])
+
+
+def test_many1():
+    parser = lib.many1(lib.char('a')).map(lambda cs: "".join(cs)).partial()
+    assert(parser("aaabbb") == ("aaa", "bbb"))
+
+
+def test_alternative():
+    parser = lib.alternative(
+        lib.tag("foo"),
+        lib.tag("bar"),
+        lib.tag("baz"))
+    assert(parser("baz") == "baz")
+
+
+def test_alternative_failure_case():
+    parser = lib.alternative(
+        lib.tag("foo"),
+        lib.tag("bar"),
+        lib.tag("baz"))
+    with pytest.raises(lib.ParseError):
+        parser("boz")
+
+
+# Test output decorators
+def test_as_string():
+    @lib.as_string
+    def builder():
+        return lib.many(lib.anychar())
+
+    parser = builder()
+    assert(parser("foo") == "foo")
+
+
+def test_trim_whitespace():
+    @lib.trim_whitespace
+    @lib.as_string
+    def builder():
+        return lib.many(lib.anychar())
+
+    parser = builder()
+    assert(parser("   foo   ") == "foo")
